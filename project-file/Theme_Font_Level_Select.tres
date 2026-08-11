@@ -1,0 +1,7 @@
+[gd_resource type="Theme" format=3 uid="uid://b6chulw7uh0eq"]
+
+[ext_resource type="FontFile" uid="uid://w07o660wvh0j" path="res://wendy.ttf" id="1_jmxkf"]
+
+[resource]
+default_font = ExtResource("1_jmxkf")
+default_font_size = 36

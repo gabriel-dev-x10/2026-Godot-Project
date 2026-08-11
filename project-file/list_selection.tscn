@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cd1ny21v2yf1d" path="res://control-list-selection.gd" id="1_6n3pk"]
 [ext_resource type="Script" uid="uid://ch082j1p6mmj3" path="res://control-list-selection-label.gd" id="2_28iiq"]
+[ext_resource type="Theme" uid="uid://b6chulw7uh0eq" path="res://Theme_Font_Level_Select.tres" id="2_350vc"]
 
 [node name="Node2D" type="Node2D" unique_id=1308900902]
 
@@ -49,58 +50,65 @@ layout_mode = 0
 offset_right = 297.0
 offset_bottom = 40.0
 
-[node name="RichTextLabel" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1102180711]
+[node name="Label0" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1102180711]
 layout_mode = 2
+theme = ExtResource("2_350vc")
 bbcode_enabled = true
 text = "This is a little text. Say hello, little text!"
 fit_content = true
 autowrap_mode = 0
 script = ExtResource("2_28iiq")
 
-[node name="RichTextLabel1" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1277381321]
+[node name="Label1" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1277381321]
 layout_mode = 2
+theme = ExtResource("2_350vc")
 bbcode_enabled = true
-text = "This is some morreee text..."
+text = "dummy-text"
 fit_content = true
 autowrap_mode = 0
 script = ExtResource("2_28iiq")
 
-[node name="RichTextLabel2" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1228729085]
+[node name="Label2" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1228729085]
 layout_mode = 2
+theme = ExtResource("2_350vc")
 bbcode_enabled = true
-text = "Adding content in here behaves exactly as I'd expect for an HTML-like control system"
+text = "dummy-text"
 fit_content = true
 autowrap_mode = 0
 script = ExtResource("2_28iiq")
 
-[node name="RichTextLabel3" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=424762259]
+[node name="Label3" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=424762259]
 layout_mode = 2
+theme = ExtResource("2_350vc")
 bbcode_enabled = true
-text = "Lovely. I'll need a more efficient/safer way of adding these in the future, though."
+text = "dummy-text"
 fit_content = true
 autowrap_mode = 0
 script = ExtResource("2_28iiq")
 
-[node name="RichTextLabel4" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=925653965]
+[node name="Label4" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=925653965]
 layout_mode = 2
+theme = ExtResource("2_350vc")
 bbcode_enabled = true
-text = "Like a uhhhhhhhhh auto-generated thing based on an array?"
+text = "dummy-text"
 fit_content = true
 autowrap_mode = 0
 script = ExtResource("2_28iiq")
 
-[node name="RichTextLabel5" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1498766137]
+[node name="Label5" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1498766137]
 layout_mode = 2
+theme = ExtResource("2_350vc")
 bbcode_enabled = true
-text = "It's been a while, though; I might need a bit to figure out a control scheme for this."
+text = "dummy-text"
 fit_content = true
 autowrap_mode = 0
 script = ExtResource("2_28iiq")
 
 [node name="Quit" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=572544172]
 layout_mode = 2
+theme = ExtResource("2_350vc")
 bbcode_enabled = true
-text = "Quit"
+text = "Exit?"
 fit_content = true
 autowrap_mode = 0
 script = ExtResource("2_28iiq")
