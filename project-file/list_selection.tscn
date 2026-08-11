@@ -1,0 +1,107 @@
+[gd_scene format=3 uid="uid://bsx3rfg7ldb46"]
+
+[ext_resource type="Script" uid="uid://cd1ny21v2yf1d" path="res://control-list-selection.gd" id="1_6n3pk"]
+[ext_resource type="Script" uid="uid://ch082j1p6mmj3" path="res://control-list-selection-label.gd" id="2_28iiq"]
+
+[node name="Node2D" type="Node2D" unique_id=1308900902]
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1414837289]
+
+[node name="Scene BG" type="ColorRect" parent="." unique_id=1613378230]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -1000.0
+offset_top = -1000.0
+offset_right = 1000.0
+offset_bottom = 1000.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Text BG" type="ColorRect" parent="." unique_id=2134808367]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -420.0
+offset_top = -250.0
+offset_right = 420.0
+offset_bottom = 250.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.52156866)
+
+[node name="Control - List Select" type="Control" parent="." unique_id=2019501710 node_paths=PackedStringArray("_VBoxContainer")]
+layout_mode = 3
+anchors_preset = 0
+offset_left = -300.0
+offset_top = -60.0
+offset_right = -260.0
+offset_bottom = -20.0
+script = ExtResource("1_6n3pk")
+_VBoxContainer = NodePath("VBoxContainer")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control - List Select" unique_id=521334465]
+layout_mode = 0
+offset_right = 297.0
+offset_bottom = 40.0
+
+[node name="RichTextLabel" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1102180711]
+layout_mode = 2
+bbcode_enabled = true
+text = "This is a little text. Say hello, little text!"
+fit_content = true
+autowrap_mode = 0
+script = ExtResource("2_28iiq")
+
+[node name="RichTextLabel1" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1277381321]
+layout_mode = 2
+bbcode_enabled = true
+text = "This is some morreee text..."
+fit_content = true
+autowrap_mode = 0
+script = ExtResource("2_28iiq")
+
+[node name="RichTextLabel2" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1228729085]
+layout_mode = 2
+bbcode_enabled = true
+text = "Adding content in here behaves exactly as I'd expect for an HTML-like control system"
+fit_content = true
+autowrap_mode = 0
+script = ExtResource("2_28iiq")
+
+[node name="RichTextLabel3" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=424762259]
+layout_mode = 2
+bbcode_enabled = true
+text = "Lovely. I'll need a more efficient/safer way of adding these in the future, though."
+fit_content = true
+autowrap_mode = 0
+script = ExtResource("2_28iiq")
+
+[node name="RichTextLabel4" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=925653965]
+layout_mode = 2
+bbcode_enabled = true
+text = "Like a uhhhhhhhhh auto-generated thing based on an array?"
+fit_content = true
+autowrap_mode = 0
+script = ExtResource("2_28iiq")
+
+[node name="RichTextLabel5" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1498766137]
+layout_mode = 2
+bbcode_enabled = true
+text = "It's been a while, though; I might need a bit to figure out a control scheme for this."
+fit_content = true
+autowrap_mode = 0
+script = ExtResource("2_28iiq")
+
+[node name="Quit" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=572544172]
+layout_mode = 2
+bbcode_enabled = true
+text = "Quit"
+fit_content = true
+autowrap_mode = 0
+script = ExtResource("2_28iiq")
+target_load_path = "QUIT"
