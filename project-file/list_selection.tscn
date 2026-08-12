@@ -43,6 +43,8 @@ offset_top = -60.0
 offset_right = -260.0
 offset_bottom = -20.0
 script = ExtResource("1_6n3pk")
+_label_script = ExtResource("2_28iiq")
+_label_theme = ExtResource("2_350vc")
 _VBoxContainer = NodePath("VBoxContainer")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Control - List Select" unique_id=521334465]
@@ -54,54 +56,10 @@ offset_bottom = 40.0
 layout_mode = 2
 theme = ExtResource("2_350vc")
 bbcode_enabled = true
-text = "This is a little text. Say hello, little text!"
+text = "This is a little text. Say hello, little text"
 fit_content = true
 autowrap_mode = 0
-script = ExtResource("2_28iiq")
-
-[node name="Label1" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1277381321]
-layout_mode = 2
-theme = ExtResource("2_350vc")
-bbcode_enabled = true
-text = "dummy-text"
-fit_content = true
-autowrap_mode = 0
-script = ExtResource("2_28iiq")
-
-[node name="Label2" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1228729085]
-layout_mode = 2
-theme = ExtResource("2_350vc")
-bbcode_enabled = true
-text = "dummy-text"
-fit_content = true
-autowrap_mode = 0
-script = ExtResource("2_28iiq")
-
-[node name="Label3" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=424762259]
-layout_mode = 2
-theme = ExtResource("2_350vc")
-bbcode_enabled = true
-text = "dummy-text"
-fit_content = true
-autowrap_mode = 0
-script = ExtResource("2_28iiq")
-
-[node name="Label4" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=925653965]
-layout_mode = 2
-theme = ExtResource("2_350vc")
-bbcode_enabled = true
-text = "dummy-text"
-fit_content = true
-autowrap_mode = 0
-script = ExtResource("2_28iiq")
-
-[node name="Label5" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=1498766137]
-layout_mode = 2
-theme = ExtResource("2_350vc")
-bbcode_enabled = true
-text = "dummy-text"
-fit_content = true
-autowrap_mode = 0
+autowrap_trim_flags = 0
 script = ExtResource("2_28iiq")
 
 [node name="Quit" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=572544172]
@@ -113,3 +71,9 @@ fit_content = true
 autowrap_mode = 0
 script = ExtResource("2_28iiq")
 target_load_path = "QUIT"
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=236092780]
+offset_left = -357.0
+offset_top = -65.0
+offset_right = -317.0
+offset_bottom = -25.0

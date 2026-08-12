@@ -6,17 +6,11 @@ I wanted to start practicing games development again, and wanted to actually sha
 
 ## Current plans:
 I'm starting super simple and will try to actually refine everything here. Here's the current priority queue:
- - List/Level selection functionality
+ - (Current) Basic List/Level selection functionality and refinement
  - Scrolling BG menu view (this should be able to move in any direction in 2D space)
+ - Start practicing pre-production: Experiment and iterate to have at least 3 ideas on paper (or in a .pdf or controlled environment or smth, but baseline prefers a standalone document), and to have them executed and testable on thier own when this step is done.
+ - **Challenge set:** Make some fully functional (UI) Sonic Mania style menus. Give 'em some heavy polish and TLC.
 
 ...should PROBABLY add a link to this on my portfolio page. At [my super cool neocities website](https://gabriel-dev.neocities.org/). It's super cool and totally not under construction or anything.
 
 ## Happy gaming!
-
-(old text)
-
-I had added some very cool text here, twice now, but I was being dumb the first time and overwrote my CTRL+C copy without saving it, and the second time, Xed (Cinnamon's 'Notes' software), crashed because I switched git branches while diagnosing that I needed to install 'lesspipe' packages on my system (and because I was dumb and didn't save).
-
-...I think I inadventently deleted some of my git notes because I didn't save or commit, either :/
-
-Welp, I guess I'll start treating Xed more sensitively by default from now on as I would with Blender or something. If you're seeing this, it means I have solid use notes on my end despite my blunder here.
