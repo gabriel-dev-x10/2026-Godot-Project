@@ -62,6 +62,14 @@ autowrap_mode = 0
 autowrap_trim_flags = 0
 script = ExtResource("2_28iiq")
 
+[node name="RichTextLabel" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=348204341]
+layout_mode = 2
+theme = ExtResource("2_350vc")
+text = "Example text"
+fit_content = true
+autowrap_mode = 0
+script = ExtResource("2_28iiq")
+
 [node name="Quit" type="RichTextLabel" parent="Control - List Select/VBoxContainer" unique_id=572544172]
 layout_mode = 2
 theme = ExtResource("2_350vc")

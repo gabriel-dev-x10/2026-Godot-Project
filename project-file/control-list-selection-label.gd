@@ -7,6 +7,8 @@ extends RichTextLabel
 #
 # So, yeah, my bad. Back to work.
 
+var _flag_developer_printing : bool = false
+
 @export var target_load_path : String = "RELOAD"
 @export var default_opacity : float = (164.0/255.0) # Should be overwritten by control script.
 var mid_opacity : float = (164.0/255.0) # yeahhhhh. I trust this.
@@ -29,7 +31,7 @@ var _flip_this_bit : bool = false
 
 
 
-
+# Delete on commit.
 func _call_func_test() -> void:
 	printerr("Called function, setting now")
 	print("pre-set value: ", _flip_this_bit)
@@ -37,10 +39,12 @@ func _call_func_test() -> void:
 	print("post-set value: ", _flip_this_bit)
 	pass
 
+# Delete on polish.
 func _set_current_opacity(_x : float):
 	current_opacity = (_x/255.0)
 	pass
 
+# Delete on polish.
 func _set_desired_opacity(_x : float):
 	desired_opacity = (_x/255.0)
 	#printerr("Recieved ", _x)
@@ -108,13 +112,21 @@ func _ease_opacity_change(
 	
 	if !(desired_opacity == current_opacity):
 		if (desired_opacity > current_opacity):
-			print("I want to raise opacity!")
+			#print("I want to raise opacity!")
 			current_opacity += 0.01
+			#current_opacity += (
+			#	abs(current_opacity - desired_opacity)
+			#	* ((1 - _ease_amt) ** _ease_exp)
+			#	)
 			pass
 		if (desired_opacity < current_opacity):
-			#current_opacity -= 0.01
-			print("I want to lower opacity!")
 			current_opacity -= 0.01
+			#print("I want to lower opacity!")
+			#current_opacity -= 0.01
+#			current_opacity -= (
+#				abs(current_opacity - desired_opacity)
+#				* ((1 - _ease_amt) ** _ease_exp)
+#				)
 			pass
 		if abs(desired_opacity - current_opacity) <= 0.01:
 			desired_opacity = current_opacity
