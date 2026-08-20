@@ -1,14 +1,41 @@
 extends Control
 
 ## What's new?
-# Very poor quality in my book, but the visuals for transparency handling at least... don't break?
-# I have a TON of comment notes in here that'll need to be reread and cleared. I was gonna press on
-# to continue, but I honestly want to take another crack at this for something above-par.
+# I stopped being lobotomized and fixed visual opacity interaction when moving OOB for both upwards
+# and downwards movement. This honestly shouldn't have taken as long as it did, and yeah, in my eyes
+# I **did** kind of neglect my website by being functionally absent because of this in-between my
+# life stuff, but in my defense...
+#
+# I was busy!
+#
+# ...ahem.
+#
+# This marks a completed milestone for this script! The only other part I could see being difficult
+# right now is the BBCode stuff, but that just seems like adding a pass after generating
+# before/after labels in _ready() - it's unlikely that it'll challenge how I think about this
+# script's code.
+#
+# BEFORE DOING A COMMIT, I want to clean up all this garbage code and to make sure this script is 
+# easily sightreadable when auditing. This means grouping up top variables properly, making sure
+# there's no serious clutter with new code, and generally being happy with everything you're seeing.
+# No dumb print calls or excessive vulgarity allowed.
+#
+# If you're seeing this, it means I've done a good job with cleanup, alongside you should start
+# seeing more decent structuring with my code moving forwards.
+
+## Important notes:
+# The minimum size of the list to be designed around should always be 2 or greater.
+# This script uses math without a check for selectors being out-of-bounds of what labels literally
+# exist, so MAKE SURE _before_copies_amt and _after_copies_amt is bigger than the total amt for vars
+#   like _opacity_base_list_fully_opaque_quantity that are used to guage what range of stuff to
+#   select for opacity change animation!
+#   See LIST'S LABEL GENERATION AND OPACITY MANAGEMENT CUTOMIZATION (NON-BBCODE STUFF) for vars.
 
 ##TODO:
-# Let's see how much we can bash out in an hour. We did not complete original workset because of cursor_pos confusion. This mildly upsets me.
+# This prototype is taking much longer than an hour.
 # This seems easy, but it's been a WHILE since I did this.
-# v Add controls: Make 'confirm' do a thing (I'm NOT going to auto-generate labels, I wanna see em in-editor)
+#
+# v Add controls: Make 'confirm' do a thing
 # v Read up/down
 # v Move the list up/down
 # v Slap a quadease with Godot's ver of time.deltaTime()
@@ -17,88 +44,131 @@ extends Control
 # > I want this to have the vibe of being infinitely scrolling. Smoke and mirrors.
 #   v Add 4 ghost sections split between top and bottom (they're copies of OG list)
 #   v Adjust VBox list up by 2x its size (calculate float at runtime - on ready)
-#   v (Needs reworking) Have a ghAstLY vIiIibe to the full list by messing with opacity
-#   > ooo I see some BBCode, I wanna experiment and animate the text, too
-#   - Add border around text
+#   v Have a ghAstLY vIiIibe to the full list by messing with opacity
+#		v This is in "_process_pulse_update_visuals_labels_opacity()"
+#   > Add border around text
+#   - ooo I see some BBCode, I wanna experiment and animate the text, too
 #   - See if we can get the labels to move diagonally like it's a game menu? like "\"
 #
 # > Test how behaviour works with different list sizes
-#   v Behaviour is perfect as pertains to cursor selection and list visually adjusting with internal information!
+#   v Behaviour is perfect as pertains to cursor selection and list physically moving!
 #   - Make sure BBCode and opacity works perfectly (lists should ALWAYS be 2 or greater in count)
 #
 # NOTE: Make sure to only use scancodes in input map!! You're using a custom XKB layout!
 #
 # Stuff to do during polish round:
-# - Fix visual opacity bug to do with failure to update when snapping OOB of user's range in list.
-# - Tweak list easing variables to be feel smoother (less snappy(?), but still responsive?? I need a better vernacular for this)
+# - Tweak list easing variables to be feel smoother
+#		- (less snappy(?), but still responsive?? I need a better vernacular for this)
 # - If holding arrows, start auto-moving.
-# - Add a shadowed VBox BG generated during runtime because it's awesome and adds much-needed contrast + depth
+# - Add a shadowed VBox BG generated during runtime because it's awesome and adds
+#		- much-needed contrast + depth
+# - Start studying easing functions (I'll probably just have them noted somewhere)
+# - Start studying exit codes and apply them properly in this project.
 
-# Bruh this is already a total mess, how--? I'll clean this when I clean it.
-var _current_scene : String = "res://list_selection.tscn"
+# Much better.
 
+# These variables are mostly grouped by what general function/purpose they serve in this script.
+
+## --- DEBUGGING FLAGS ---
 # Start using this after commiting. Should be used for non-spammable analysis.
 @export var _flag_developer_printing : bool = false
+# --- END OF DEBUGGING FLAGS ---
 
+# These are used for multiple purposes or are intentionally spaghettified for ease of access.
+
+## --- COMPLEX STUFF ---
+# UX variable that this script is built around. Used to know where user so we can read scenechange
+#   text, and is thus used by a ton of opacity management stuff. Last possible value is
+#   "_label_quantity - 1". Handled in _process_move_cursor_by().
+var _current_cursor_pos : int = 0 # Hope I don't need to say this, but 0 is the first possible value
+# Given to all labels while calling _ready(). Currently used for opacity handling + scene text UX.
 @export var _label_script : Script
+# Given to all labels while calling _ready(). Currently used to set current font to wendy.ttf
 @export var _label_theme : Theme
+# ---- END OF COMPLEX STUFF ---
 
-var _current_cursor_pos : int = 0
+# UX-specific vars.
 
+## --- UX STUFF ---
+# _current_cursor_pos is in 'COMPLEX STUFF' because of it being tied to opacity handling animations.
+var _current_scene : String = "res://list_selection.tscn"
+# --- END OF UX STUFF ---
+
+# 1st var is a critical component, vars 2-4 is used to label creation, remaining used for opacity.
+
+## --- LIST'S LABEL GENERATION AND OPACITY MANAGEMENT CUTOMIZATION (NON-BBCODE STUFF) ---
 var _label_quantity : int # Used to remember how big the list is (counts from 1)
-var _Labels : Array[RichTextLabel] # No array-specific naming convention soooooooooooooooo
-# Below 2 vars used in _ready_visual_generate_primary_list_before_after() and
-#   _process_move_cursor_by()
-# The minimum size of the list to be designed around should always be 2 or greater.
+var _Labels : Array[RichTextLabel] # No array-specific naming convention at a glance sooooooooooooo
+# Used in _ready_visual_generate_primary_list_before_after() and _process_move_cursor_by()
 var _before_copies_amt : int = 3
+# Used in _ready_visual_generate_primary_list_before_after() and _process_move_cursor_by()
 var _after_copies_amt : int = 5
-# These handle opacity changes user sees when navigating the list - You're using math without an OOB check, MAKE SURE _before_copies_amt and _after_copies_amt is bigger than the total amt for these!
+# Intended to make the script more customizable after I polish it, but this currently does nothing.
 var _should_make_ready_overwrite_opaque_quantity : bool = true
-var _opacity_base_list_fully_opaque_quantity : int = 2 # I want default to be _label_quantity, but this is an optional thing to change if I change my mind
-var _opacity_list_look_behind_opaque : int = 0 # Customizable, but untested for robustness
-var _opacity_list_look_behind_transparent : int = 1 # Customizable, but untested for robustness; added under _opacity_base_list_fully_opaque_quantity;
-var _opacity_list_look_ahead_opaque : int = 0 # Customizable, but untested for robustness
-var _opacity_list_look_ahead_transparent : = 2 # Customizable, but untested for robustness; added under _opacity_base_list_fully_opaque_quantity;
+# Sets itself _label_quantity, uses value set here if above var is false. Untested. Adds to below.
+var _opacity_base_list_fully_opaque_quantity : int = 2
+# Customizable, but untested for robustness. Added to _func_scope_opaque/transparency_range_amt.
+var _opacity_list_look_behind_opaque : int = 0
+# Customizable, but untested for robustness. Added to _func_scope_transparency_range_amt.
+var _opacity_list_look_behind_transparent : int = 1
+# Customizable, but untested for robustness. Added to _func_scope_opaque/transparency_range_amt.
+var _opacity_list_look_ahead_opaque : int = 0
+# Customizable, but untested for robustness. Added to _func_scope_transparency_range_amt.
+var _opacity_list_look_ahead_transparent : = 2
+# --- END OF LABEL GENERATION AND OPACITY MANAGEMENT CUTOMIZATION (NON-BBCODE STUFF) ---
 
-# This flag was related to opacity not updating in labels' scripts desired_opacity due to easing
-# functions trying to move across 0% of the easing animation.
-# Delete on commit.
-#var _flag_wants_to_snap_labels_opacity : bool = false
+# Animation handling during _process(). These adjust position every frame, functionally animating.
 
-
-@export var _VBoxContainer : VBoxContainer # LHand Y- I think??? Y+ is down, Xr.
+## --- LIST CONTAINER MOVEMENT HANDLING ---
+@export var _VBoxContainer : VBoxContainer # LHand Y-, I think??? Y+ is down, Xr. This note is awful
+# Used with this script's in-code easing animation. This is where _VBoxContainer currently is.
 var _default_VBox_pos : float
+# Used with this script's in-code easing animation. This is where _VBoxContainer wants to go to.
 var _desired_VBox_pos : float
-# Be carefule with fonts; Spacing can auto-adjust.
-var _VBox_move_by_amt : float = 38.0 # diff is comparing the 1st two labels' pos
-
-# Easing variables
+# Manually set this difference between 1st and 2nd item. Careful with fonts, as spacing can adjust.
+var _VBox_move_by_amt : float = 38.0
+# Easing variable for _handle_ease_out(). Intended range is [0.0, 1.0[ (Setting 1.0 will multiply 0)
 var _var_ease_out_amt : float = 0.25
+# Easing variable for _handle_ease_out(). This affects aptitude (if I'm using that right); Intensity
 var _var_ease_out_exp : float = 2.5
+# Equation (function needs to adjust by +/- result depending on if we want to move up or down):
+# pos.y +/- pos.y (_desired_VBox_pos - _VBoxContainer.position.y) * ((1 - _ease_amt) ** _ease_exp)
+
+# --- END OF LIST CONTAINER MOVEMENT HANDLING ---
 
 
  
 
-# System function
+# System function. This is where all initializing code is run before the session starts.
 func _ready() -> void:
-	# Prepares VBoxContainer visual movement information (Might now be redundant)
-	_default_VBox_pos = _VBoxContainer.position.y
-	_desired_VBox_pos = _VBoxContainer.position.y
 	
+	# Prepares VBoxContainer visual movement information (Only remembers vertical position)
+	_default_VBox_pos = _VBoxContainer.position.y # Used for easier resets
+	_desired_VBox_pos = _VBoxContainer.position.y # Used for vertical easing
 	
 	# Prepares VBox visuals wrapping (inf wrap, snaps container) + UX cursor movement/selection;
 	_label_quantity = _VBoxContainer.get_child_count(false)  # starts counting from int 1
+	
 	# Needs to be after _label_quantity being processed.
-	_ready_visual_generate_primary_list_before_after()
+	_ready_visual_generate_primary_list_before_after() # Uses _before_copies_amt, _after_copies_amt
+	
 	# Adjusts list for amount of copies we made w/ _ready_visual_generate_primary_list_before_after
+	## NOTE:
+	# This could be better optimized to remove mental detour when working with visual resets when
+	# for variables _default_VBox_pos and _desired_VBox_pos. Would require reworking current code,
+	# so I'm going to keep this as-is for now since this analysis is happening during a cleanup
+	# round.
 	_VBoxContainer.position.y -= (_label_quantity * _before_copies_amt * _VBox_move_by_amt)
 	_desired_VBox_pos -= (_label_quantity * _before_copies_amt * _VBox_move_by_amt)
-	# Needs to be after list generation.
+	
+	# Self-explanatory. Needs to be after list generation.
 	_ready_set_opacity_on_all_labels_to_zero()
-	# Needs to be after _ready_set_opacity_on_all_labels_to_zero()
+	
+	# Needs to be after setting labels opacity to zero.
 	if _should_make_ready_overwrite_opaque_quantity:
 		_opacity_base_list_fully_opaque_quantity = _label_quantity
-	else:
+	else: # Not yet implemented
+		# Customization warning.
 		printerr("You didn't think about how this script handles 
 			_opacity_base_list_fully_opaque_quantity when it's not the same as the amount of items 
 			as what you originally had pre-labels duplication for the infinite wrapping effect!
@@ -106,40 +176,61 @@ func _ready() -> void:
 			You let this be possible for more robust customization in-code.
 			
 			I didn't finish writing code at the time of writing, but this should affect all opacity
-			management coming from this script, both in this script snapping the current opacity of
+			management coming from this script, both in this script masking the current opacity of
 			labels (in bulk or otherwise) and in this script telling what opacity to ease to (in
 			bulk or otherwise).
 			
 			This script's basically the command centre for that in design, DON'T try to set this
 			stuff in the labels' scripts, this one WILL overwrite it.")
 		pass
-	_ready_set_opacity_on_desired_stuff()
+	
+	# Handles half-opacity and full-opacity for the first time in this script after setting all 0.
+	_ready_set_opacity_on_desired_stuff() # Set after _ready_set_opacity_on_all_labels_to_zero()
 	
 	if _flag_developer_printing:
+		print("")
 		print("Label count: ", _label_quantity)
+		print("Child count: ", _VBoxContainer.get_child_count(false))
 	pass
 
-# System function
+# System function. This is where the main session happens.
 func _process(_delta: float) -> void:
+	
+	## --- START OF INPUTS SECTION ---
 	if Input.is_action_just_pressed("up"):
+		# _move_cursor_by handles UX and _VBox positioning, _opacity handles animation management
 		_process_pulse_update_visuals_labels_opacity(_process_move_cursor_by(-1), -1)
-		
-		#_process_pulse_update_visuals_labels_opacity(_flag_wants_to_snap_labels_opacity)
-		#print("ue oshimatta! New cursorpos: ", _current_cursor_pos, " New list position: ", _desired_VBox_pos)
+		if _flag_developer_printing:
+			print("ue oshimatta!
+				New cursorpos: ", _current_cursor_pos, " New list position: ", _desired_VBox_pos
+				)
 		pass
 	
 	if Input.is_action_just_pressed("down"):
-		#_process_move_cursor_by(+1)
+		# also, _move_cursor_by returns true if user goes OOB upwards/downwards for looping effect
 		_process_pulse_update_visuals_labels_opacity(_process_move_cursor_by(+1), +1)
-		#print("shita oshimatta! New cursorpos: ", _current_cursor_pos, " New list position: ", _desired_VBox_pos)
+		if _flag_developer_printing:
+			print("shita oshimatta!
+			New cursorpos: ", _current_cursor_pos, " New list position: ", _desired_VBox_pos
+			)
 		pass
 	
 	if Input.is_action_just_pressed("confirm"):
-		match _VBoxContainer.get_child(_current_cursor_pos + (_before_copies_amt*_label_quantity)).target_load_path:
+		
+		# UX wiring: Find out where we are, and behave by selected label's target_load_path string
+		match _VBoxContainer.get_child(
+			_current_cursor_pos + (_before_copies_amt*_label_quantity)
+			).target_load_path:
+			
+			# (Default) Reload the current level select scene from scratch
 			"RELOAD", "reload", "refresh", "":
 				get_tree().change_scene_to_file(_current_scene)
+			
+			# Close game
 			"QUIT", "quit":
 				get_tree().quit(1) # I should check how to handle exit codes...
+			
+			# Load whatever the Godot relative path is. This will change scenes.
 			_:
 				get_tree().change_scene_to_file(
 					_VBoxContainer.get_child(_current_cursor_pos).target_load_path
@@ -147,56 +238,89 @@ func _process(_delta: float) -> void:
 		pass
 	
 	if Input.is_action_just_pressed("cancel"):
-		# There's no surmenu, so we just give up instead.
-		get_tree().quit(1)
-	
-	if Input.is_action_pressed("quit"):
+		#
+		# There's no surmenu yet, so we just give up instead.
 		get_tree().quit(1)
 		pass
 	
-	_handle_ease_out( # eases the _VBoxContainer list of labels
+	if Input.is_action_pressed("quit"):
+		#
+		get_tree().quit(1)
+		pass
+	# --- END OF INPUTS SECTION ---
+	
+	# Handles the easing of the vertical position of the _VBoxContainer holding labels.
+	_handle_ease_out(
 		_var_ease_out_amt,
 		_var_ease_out_exp,
 		_delta
 	)
+	pass
+
+# This is a good idea for fast troubleshooting, but this is something to add during polishing.
+#func _test():
+#	printerr("control-list-selection.gd:
+#	_process_pulse_update_visuals_labels_opacity():
+#	_should_mask_list_for_infinite_wrapping_effect:
+#	_move_direction == -1:
+#	!is_instance_valid:
+#		Read these errors carefully, this message only checks for one problem at a time!
+#		
+#		You don't have enough space to work with labels' opacity management!
+#		Add more space by adding to the following variable(s):")
+#	print("						_after_copies_amt")
+#	printerr("Here's the space this value is a part of:")
+#	print("						(_after_copies_amt * label_quantity) + 'end of list adjustment': ", 
+#								_after_copies_amt * _label_quantity 
+#								+ (_before_copies_amt * _label_quantity)
+#								+ (_label_quantity -1)
+#		)
+#	printerr("Here's the amount you need to add for this script to work:")
+#	print("						", _opacity_base_list_fully_opaque_quantity
+#		+ _opacity_list_look_ahead_opaque + _opacity_list_look_ahead_transparent
+#		)
+	pass
 
 # Done - This generates extra labels in _ready()
 func _ready_visual_generate_primary_list_before_after() -> void:
-	# --- PREPARATION OF '_Labels[RichTextLabel]', WE WANT TO DUPLICATE ENTRIES LATER ---
-	_Labels.resize(_label_quantity)
-	#print("Labels size", _Labels.size()) # I'm guessing it's counting from 1?
 	
-	# This array is only used in this scope; I might have to use a script-scope
-	# array when I copy the text over for shadows
+	# Preparation of '_Labels[RichTextLabel]', we want to duplicate elements in this function
+	_Labels.resize(_label_quantity)
+	if _flag_developer_printing:
+		print("Labels size", _Labels.size()) # I'm guessing it's counting from 1?
+		pass
+	
+	# This array is only used in this func. I'll need a script-scope array for a shadow backdrop.
 	var _disposable_deep_copy_labels_text : Array[String]
 	_disposable_deep_copy_labels_text.resize(_label_quantity)
 	
-	for n in _VBoxContainer.get_child_count(): # Count from 0 or 1? Let's find out the hard way!
-		_disposable_deep_copy_labels_text[n] = _VBoxContainer.get_child(n).text
-		# lmao turns out I'm doing this very cleanly for how I'm making this;
-		# I checked docs; Not only is .text exactly what I think it is (within 
-		# my current use), modifying text also overwrites BBCode FORMATTING - 
-		# BBCode is what lets me use [b], [i], etc and seems to let me do other
-		# smallish goofy stuff - perfect for what I want to do here. I'll 
-		# check what BBCode options exist when I'm ready to add juice.
-		pass
+	# Delete when ready; get_child_count() counts from 0.
+	#for n in _VBoxContainer.get_child_count(): # Count from 0 or 1? Let's find out the hard way!
+	#	_disposable_deep_copy_labels_text[n] = _VBoxContainer.get_child(n).text
+	#	pass
 	
 	# ...why is it green. stop that. you're scaring me.
 	for n in _label_quantity: _Labels[n] = _VBoxContainer.get_child(n)
 	
-	# --- EVERYTHING UNTIL HERE WORKS AS INTENDED --
+	# Script needs to move new labels to the top of the list; Because Godot Control nodes use an
+	# HTML-like logic, all labels need to be in the same order in the tree that you'd want them to
+	# be shown during runtime.
 	var _original_label_array_size = _Labels.size()
 	
-	# Start of 'before' part
+	# Start of 'before' labels generation part
 	for _current_print_set in (_before_copies_amt):
 		var _temp_iteration : int = 0
 		for n in _Labels:
 			var _instance_RichTextLabel = RichTextLabel.new()
 			_instance_RichTextLabel.fit_content = true
 			_instance_RichTextLabel.autowrap_mode = 0
-			var _temp_current_cycle_name = "Pre-list instance "+ str(_current_print_set) +" dot "+ str(n)
+			var _temp_current_cycle_name = (
+				"Pre-list instance "+ str(_current_print_set) +" dot "+ str(n)
+				)
 			_instance_RichTextLabel.name = _temp_current_cycle_name
-			_instance_RichTextLabel.text = _Labels[_temp_iteration].text# + " (prelist "+ str(_current_print_set) +")"
+			_instance_RichTextLabel.text = (
+				_Labels[_temp_iteration].text# + " (prelist "+ str(_current_print_set) +")"
+				)
 			_instance_RichTextLabel.theme = _label_theme
 			_instance_RichTextLabel.set_script(
 				_label_script # apparently better to use set_script() instead of .script = <Script>
@@ -212,20 +336,24 @@ func _ready_visual_generate_primary_list_before_after() -> void:
 				)
 			_temp_iteration += 1
 		pass
-	# End of 'before' part
+	# End of 'before' labels generation part
 	
 	# boo.
 	
-	# Start of 'after' part
+	# Start of 'after' labels generation part
 	for _current_print_set in (_after_copies_amt):
 		var _temp_iteration : int = 0
 		for n in _Labels:
 			var _instance_RichTextLabel = RichTextLabel.new()
 			_instance_RichTextLabel.fit_content = true
 			_instance_RichTextLabel.autowrap_mode = 0
-			var _temp_current_cycle_name = "Post-list instance "+ str(_current_print_set) +" dot "+ str(n)
+			var _temp_current_cycle_name = (
+				"Post-list instance "+ str(_current_print_set) +" dot "+ str(n)
+				)
 			_instance_RichTextLabel.name = _temp_current_cycle_name
-			_instance_RichTextLabel.text = _Labels[_temp_iteration].text# + " (postlist "+ str(_current_print_set) +")"
+			_instance_RichTextLabel.text = (
+				_Labels[_temp_iteration].text# + " (postlist "+ str(_current_print_set) +")"
+				)
 			_instance_RichTextLabel.theme = _label_theme
 			_instance_RichTextLabel.set_script(
 				_label_script # apparently better to use set_script() instead of .script = <Script>
@@ -233,633 +361,532 @@ func _ready_visual_generate_primary_list_before_after() -> void:
 			_VBoxContainer.add_child(_instance_RichTextLabel)
 			_temp_iteration += 1
 		pass
-	# End of 'after' part.
+	# End of 'after' labels generation part
 	pass
 
 # Done - Execution is much easier than the idea generation for this
 func _ready_set_opacity_on_all_labels_to_zero() -> void:
-	# This is gonna take all session to figure out, isn't it
-	#theme_override_colors/default_color = (
-	#	theme_override_colors/default_color.x,
-	#	theme_override_colors/default_color.y,
-	#	theme_override_colors/default_color.z,
-	#	0.0
-	#)
-	
-	# Okay, this is annoying; If I want that super cool ghost effect, I should NOT
-	# iterate all labels via this list during engine updates/frames because that just seems insane
-	# and failure-prone.
-	#
-	# Problem-solving time. I can apparently manually adjust RichTextLabel text colors via
-	# "theme_override_colors/default_color", but idk how to access that in-code, or how to
-	# structure that.
-	#
-	# So, first off, I think I need to use smth like 'set("Property path", value)' for this
-	# 'theme override' idea in-script; This is the direct property path that the editor is giving
-	# me. I'll still have to have this script coordinate what the labels are supposed to do,
-	# so it's probably better to use a 'pulse pattern'; THIS SCRIPT knows what labels do what,
-	# meaning it should tell the individual labels what to do, and labels can manually set it and
-	# do easing, meaning...
-	#
-	# ...it's probably fine, resources-wise, to have the individual labels have a _process() call,
-	# right? The only knowledge hurdle would then be setting ANY color info in-script.
-	#
-	## TODO:
-	# v Set ANY LABEL's color info in a label script (it can affect all, I don't care for now)
-	# v Set ANY LABEL's color info from this script using current cursor pos AFTER initializing
-	#     Before/After copies
-	#     v This is very messy noting, but intended behaviour is to be able to see entire length of
-	#       list, INCLUDING a 'look-before amt' and 'look-after amt'.
-	#
-	# v Use the desired/ease pattern idea from this script's position info; Literal flow might
-	#     need tweaking though, as I might not be able to pull color info comfortably, meaning
-	#     I'd set 'current_opacity : float = 255.0/255.0' and get that var when working with 
-	#     set(theme_override_colors/default_color, ...SOMETHING), not sure how this'll look yet)
-	# v Figure out how to set this script's relevant control vars on START ONLY
-	# > Figure out how to set this script's relevant control vars on WRAP ONLY
-	# v Figure out how to set this script's relevant control vars on update (while moving up/down)
-	# ~ Add opacity easing in label's script, add opacity snapping in this script's wrapping handling
-	# - (Obsolete 'step') ?!?!?!?
-	# - (Obsolete step) Come back to this function to initialize...how, exactly? I'll probably need a 
-	#     'mid-opacity' value and a 'how far can I look ahead' + '~ look behind' value,
-	#     combinatorized for full-opacity and 'mid-opacity' + adequate internal managment to make
-	#     that work, PLUS robust functionality for different label quantities, hopefully not 
-	#     spaghettified. Yaaaayyyy...
-	# - Commit to main when confident.
 	
 	for n in _VBoxContainer.get_child_count(false): # counts from 0
 		_VBoxContainer.get_child(n).current_opacity = (000.0/225.0)
 		_VBoxContainer.get_child(n).desired_opacity = (000.0/225.0)
-	pass
+		pass
 
-# Done - reading this is a slight headache though; Might be boilerplatey
+# Done - Boilerplatey. Reading this is a slight headache.
 func _ready_set_opacity_on_desired_stuff() -> void:
+	
 	# Basically, the logic is to find the exact size of the labels we'd affect, then move that range
 	# backwards (closer to 0) depending on where we want to start moving through the list from 
 	# (which would be wherever this script thinks "_before_copies_amt * _label_quantity" starts
 	# from -- this is math is where 'cursor position 0' is supposed to be, in the label's 
 	# position in the list instead of intended UX selection is.)
 	
-	var _func_scope_transparency_range_amt = ( # We find out how many labels to affect, and take some steps back from where the user would start (user's relative top of the list)
-		_opacity_base_list_fully_opaque_quantity # Default is amt of labels originally contained (equal to range of stuff cursor UX selection range has); Alternative is a custom range specified by coder (this hasn't been tested yet)
-		+ _opacity_list_look_behind_opaque # How many extra steps behind do we want to look from 1st label?
-		+ _opacity_list_look_behind_transparent # How many extra steps back should we consider for mid-opacity?
-		+ _opacity_list_look_ahead_opaque # How many extra steps forward do we want to look from the end of _opacity_base_list_fully_opaque_quantity?
-		+ _opacity_list_look_ahead_transparent # How many etra steps forwards AFTER base opaque range + opaque look ahead should we consider for mid-opacity?
+	# We find out how many labels to affect, and take some steps back from where the user would
+	# start (user's relative top of the list)
+	var _func_scope_transparency_range_amt = (
+		# Default is amt of labels originally contained (equal to range of stuff cursor UX selection
+		# range has); Alternative is a custom range specified by coder (this hasn't been tested yet)
+		_opacity_base_list_fully_opaque_quantity
+		# How many extra steps behind do we want to look from 1st label?
+		+ _opacity_list_look_behind_opaque
+		# How many extra steps back should we consider for mid-opacity?
+		+ _opacity_list_look_behind_transparent
+		# How many extra steps forward do we want to look from the end of
+		# _opacity_base_list_fully_opaque_quantity?
+		+ _opacity_list_look_ahead_opaque
+		# How many etra steps forwards AFTER base opaque range + opaque look ahead should we
+		# consider for mid-opacity?
+		+ _opacity_list_look_ahead_transparent
 	)
 	if _flag_developer_printing:
 		print("_func_scope_transparency_range_amt ", _func_scope_transparency_range_amt)
+		pass
 	
-	var _func_scope_opacity_range_amt = ( # We find out how many labels to affect, and take some steps back from where the user would start (user's relative top of the list)
-		_opacity_base_list_fully_opaque_quantity # Default is amt of labels originally contained (equal to range of stuff cursor UX selection range has); Alternative is a custom range specified by coder (this hasn't been tested yet)
-		+ _opacity_list_look_behind_opaque # How many extra steps behind do we want to look from 1st label?
-		+ _opacity_list_look_ahead_opaque # How many extra steps forward do we want to look from the end of _opacity_base_list_fully_opaque_quantity?
+	# We find out how many labels to affect, and take some steps back from where the user would
+	# start (user's relative top of the list)
+	var _func_scope_opacity_range_amt = (
+		# Default is amt of labels originally contained (equal to range of stuff cursor UX selection
+		# range has); Alternative is a custom range specified by coder (this hasn't been tested yet)
+		_opacity_base_list_fully_opaque_quantity
+		# How many extra steps behind do we want to look from 1st label?
+		+ _opacity_list_look_behind_opaque
+		# How many extra steps forward do we want to look from the end of
+		# _opacity_base_list_fully_opaque_quantity?
+		+ _opacity_list_look_ahead_opaque
 	)
 	if _flag_developer_printing:
 		print("_func_scope_opacity_range_amt ", _func_scope_opacity_range_amt)
+		pass
 	
-	# Half-opacity section - you should do this first in current design.
+	# Half-opacity section - you should do this first if you want to do it the way I did.
 	for n in _func_scope_transparency_range_amt:
+		
 		# Set every (revelant) label's current opacity
 		(_VBoxContainer.get_child(
-				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-				+ n # Iteration over the size of our list; _label_quantity
-				- _opacity_list_look_behind_opaque
-				- _opacity_list_look_behind_transparent # this shifts effected range backwards
+			(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
+			+ n # Iteration over the size of our list; _label_quantity
+			- _opacity_list_look_behind_opaque
+			- _opacity_list_look_behind_transparent # this shifts effected range backwards
 			).current_opacity
-		) = _VBoxContainer.get_child(
-				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
+				) = _VBoxContainer.get_child(
+				(_before_copies_amt * _label_quantity)
 				+ n # Iteration over the size of our list; _label_quantity
 				- _opacity_list_look_behind_opaque # this shifts effected range backwards
 				- _opacity_list_look_behind_transparent # this shifts effected range backwards
-			).mid_opacity
+					).mid_opacity
+		
 		# Set every (revelant) label's desired opacity
 		(_VBoxContainer.get_child(
-				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-				+ n # Iteration over the size of our list; _label_quantity
-				- _opacity_list_look_behind_opaque # this shifts effected range backwards
-				- _opacity_list_look_behind_transparent # this shifts effected range backwards
+			(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
+			+ n # Iteration over the size of our list; _label_quantity
+			- _opacity_list_look_behind_opaque # this shifts effected range backwards
+			- _opacity_list_look_behind_transparent # this shifts effected range backwards
 			).desired_opacity
-		) = _VBoxContainer.get_child(
+				) = _VBoxContainer.get_child(
 				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
 				+ n # Iteration over the size of our list; _label_quantity
 				- _opacity_list_look_behind_opaque # this shifts effected range backwards
 				- _opacity_list_look_behind_transparent # this shifts effected range backwards
-			).mid_opacity
+				).mid_opacity
 	
 	
 	# Full-opacity section - you should set this after mid-opacity in current design.
 	for n in _func_scope_opacity_range_amt:
+		
 		# Set every (relevant) label's current opacity
 		(_VBoxContainer.get_child(
-				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-				+ n # Iteration over the size of our list; _label_quantity
-				- _opacity_list_look_behind_opaque # this shifts effected range backwards
+			(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
+			+ n # Iteration over the size of our list; _label_quantity
+			- _opacity_list_look_behind_opaque # this shifts effected range backwards
 			).current_opacity
-		) = (255.0/255.0)
+				) = (255.0/255.0)
+		
 		# Set every (revelant) label's desired opacity
 		(_VBoxContainer.get_child(
-				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-				+ n # Iteration over the size of our list; _label_quantity
-				- _opacity_list_look_behind_opaque # this shifts effected range backwards
+			(_before_copies_amt * _label_quantity)
+			+ n # Iteration over the size of our list; _label_quantity
+			- _opacity_list_look_behind_opaque # this shifts effected range backwards
 			).desired_opacity
-		) = (255.0/255.0)
+				) = (255.0/255.0)
 	pass
 
 # Done - Easing function used in _process (deltaTime stuff)
-func _handle_ease_out ( # I should totally note easing equations sometime (:
+func _handle_ease_out (
 	_ease_amt : float,
 	_ease_exp : float,
-	_delta : float
+	_delta : float # You mult by time passed between frames so that my gameplay looks the same for 
+	# you. (I plan around 60fps, it wouldn't be fair to 144fps users if an enemy moved faster per
+	# frame compared to me in a First Person Shooter, for example.)
 	):
+	
+	# If _VBox isn't where it wants to be...
 	if _VBoxContainer.position.y != _desired_VBox_pos:
-		# if moving up...
+		# ... and if it wants to move upwards...
 		if _VBoxContainer.position.y < _desired_VBox_pos:
-			_VBoxContainer.position.y += ( # Change by ease amt
-				(_desired_VBox_pos - _VBoxContainer.position.y) # "Where are we going?"
-				* ((1 - _ease_amt) ** _ease_exp) # "What does the ease look like?"
+			# ... lerp upwards to desired position.
+			_VBoxContainer.position.y += ( # Add current value with following expression.
+				(_desired_VBox_pos - _VBoxContainer.position.y) # What's the distance to endpoint?
+				* ((1 - _ease_amt) ** _ease_exp) # What percent of that are we going to this frame?
 				)
-		# if moving down...
+		# ... and if it wants to move downwards...
 		else:
-			_VBoxContainer.position.y -= (
+			# ... lerp downwards to desired position.
+			_VBoxContainer.position.y -= ( # This is what the ease looks like, by the way.
 				(_VBoxContainer.position.y - _desired_VBox_pos)
-				* ((1 - _ease_amt) ** _ease_exp)
+				* ((1 - _ease_amt) ** _ease_exp) # No visual graph for you, though.
 				)
 	pass
 
-# Done - Used in _process. Might need extra cleanup to be more readable at a glance.
-func _process_move_cursor_by( # Returns bool for _process_pulse_update_visuals_labels_opacity()!
-	_cursor_move_amt : int # I'm pretty sure this forces coder to pass an int
+# Done - Boilerplatey, but Okayish code. It works.
+func _process_move_cursor_by( # Returns bool for _process_pulse_update_visuals_labels_opacity()
+	_cursor_move_amt : int
 	):
+	
+	# If cursor is moving upwards...
 	if _cursor_move_amt == -1:
+		
 		# If cursor is going up and out of bounds... don't! Cave Johnson would be so proud.
 		if ((_current_cursor_pos + _cursor_move_amt) < 0):
-			#print("Cursor wants to be less than 0! Moved to end of list instead.")
+			
+			if _flag_developer_printing:
+				print("Cursor wants to be less than 0! Moved to end of list instead.")
+				pass
+			
+			# Updates UX logic. If we'd go OOB, set cursor to end of list.
 			_current_cursor_pos = (_label_quantity - 1)
+			
+			# Updates _VBox container's position to bottom of list and accurately masks wrapping.
+			
+			# This part sets literal position to where OOB entry would've been from the bottom.
 			_VBoxContainer.position.y = _default_VBox_pos - (
 				_VBox_move_by_amt * (_label_quantity-1) # _label_quantity counts from 1, not 0
 				) - _VBox_move_by_amt - (_label_quantity*(_before_copies_amt) * _VBox_move_by_amt)
-			# Delete on commit
-			#print("_label_quantity: ", _label_quantity)
-			#print("_VBox_move_by_amt: ", _VBox_move_by_amt)
-			#print("[A]: _VBox_move_by_amt * _label_quantity: ", _VBox_move_by_amt * _label_quantity)
-			#print("_default_VBox_pos: ", _default_VBox_pos)
-			#print("_default_VBox_pos - ':[A]':", _default_VBox_pos - (_VBox_move_by_amt * _label_quantity))
-			#printerr(-_VBox_move_by_amt * (_label_quantity-1)) # bruh.
+			
+			# This part sets desired position to where the latest position should be for user.
 			_desired_VBox_pos = _default_VBox_pos - (
 				_VBox_move_by_amt * (_label_quantity-1) # _label_quantity counts from 1, not 0
 				) - (_label_quantity*(_before_copies_amt) * _VBox_move_by_amt)
+			
+			# Tells _process_pulse_update_visuals_labels_opacity() to wrap.
 			return true
+		
+		# Move upwards normally if we're not going OOB
 		else:
+			
+			# Updates UX (current cursor position)
 			_current_cursor_pos -= 1
+			
+			# Updates visuals - desired vars are used for easing; This case, _VBox up/down movement.
 			_desired_VBox_pos += _VBox_move_by_amt
+			
+			# Tells _process_pulse_update_visuals_labels_opacity() not to wrap.
 			return false
+	
+	# If cursor is moving downwards...
 	elif _cursor_move_amt == +1:
+		
 		# If we're going down and out of bounds... don't!
 		if ((_current_cursor_pos + _cursor_move_amt) > (_label_quantity - 1)):
-			#print("Cursor wants to be more than available! Moved to end of list instead.")
+			if _flag_developer_printing:
+				print("Cursor wants to be more than available! Moved to end of list instead.")
+				pass
+			
+			# Updates UX logic. If we'd go OOB, set cursor to start of list.
 			_current_cursor_pos = (0)
+			
+			# Updates _VBox container's position to top of list and accurately masks wrapping.
 			_VBoxContainer.position.y = _default_VBox_pos + _VBox_move_by_amt - (
 				_label_quantity*_before_copies_amt * _VBox_move_by_amt
 				)
+			
+			# This part sets desired position to where the first position should be for user.
 			_desired_VBox_pos = _default_VBox_pos - (
 				_label_quantity*_before_copies_amt * _VBox_move_by_amt
 				)
+			
+			# Tells _process_pulse_update_visuals_labels_opacity() to wrap.
 			return true
-			#_flag_wants_to_snap_labels_opacity = true
+		
+		# Move downwards normally if not going OOB
 		else:
+			
+			# Updates UX (current cursor position)
 			_current_cursor_pos += 1
+			
+			# Updates visuals - desired vars are used for easing; This case, _VBox up/down movement.
 			_desired_VBox_pos -= _VBox_move_by_amt
+			
+			# Tells _process_pulse_update_visuals_labels_opacity() not to wrap.
 			return false
+	
+	# If we're not moving up/down by 1 step... what are we even trying to do here?
+	# There's nothing planned for this, so I'm disabling anything outside of current design.
 	else:
+		
 		if _flag_developer_printing:
 			printerr("[control-list-selection.gd]_process_move_cursor_by()
 				catch case: _cursor_move_amt is only supposed to go up/down by one!")
+			pass
+		
+		# _process_pulse_update_visuals_labels_opacity() doesn't need wrapping if it doesn't move.
 		return false
 
-# In prog. - Figuring out what to do for snapping at top/bottom of lists.
+# Done. Finally.
 func _process_pulse_update_visuals_labels_opacity(
-	_should_snap_list_for_infinite_wrapping_effect : bool,
-	_move_direction # Can be an int (-1=up, +1=down)
+	_should_mask_list_for_infinite_wrapping_effect : bool,
+	_move_direction # Can be an int (-1=up, +1=down), used for wrapping effect.
 	) -> void:
-	var _func_scope_transparency_range_amt = ( # We find out how many labels to affect, and take some steps back from where the user would start (user's relative top of the list)
-		_opacity_base_list_fully_opaque_quantity # Default is amt of labels originally contained (equal to range of stuff cursor UX selection range has); Alternative is a custom range specified by coder (this hasn't been tested yet)
-		+ _opacity_list_look_behind_opaque # How many extra steps behind do we want to look from 1st label?
-		+ _opacity_list_look_behind_transparent # How many extra steps back should we consider for mid-opacity?
-		+ _opacity_list_look_ahead_opaque # How many extra steps forward do we want to look from the end of _opacity_base_list_fully_opaque_quantity?
-		+ _opacity_list_look_ahead_transparent # How many etra steps forwards AFTER base opaque range + opaque look ahead should we consider for mid-opacity?
-	)
 	
-	var _func_scope_opacity_range_amt = ( # We find out how many labels to affect, and take some steps back from where the user would start (user's relative top of the list)
-		_opacity_base_list_fully_opaque_quantity # Default is amt of labels originally contained (equal to range of stuff cursor UX selection range has); Alternative is a custom range specified by coder (this hasn't been tested yet)
-		+ _opacity_list_look_behind_opaque # How many extra steps behind do we want to look from 1st label?
-		+ _opacity_list_look_ahead_opaque # How many extra steps forward do we want to look from the end of _opacity_base_list_fully_opaque_quantity?
-	)
-		
-	# If we should move and handle opacity as normal...
-	#if !_should_snap_list_for_infinite_wrapping_effect:
-	# Start by politely asking all labels to turn invisible...
+	# We find out how many labels to affect, and take some steps back from where the user would
+	# start adding transparency (user's relative top of the list)
+	var _func_scope_transparency_range_amt = (
+		# Default is amt of labels originally contained (equal to range of stuff cursor UX selection
+		# range has); Alternative is a custom range specified by coder (this hasn't been tested yet)
+		_opacity_base_list_fully_opaque_quantity
+		# How many extra steps behind do we want to look from 1st label?
+		+ _opacity_list_look_behind_opaque
+		# How many extra steps back should we consider for mid-opacity?
+		+ _opacity_list_look_behind_transparent
+		# How many extra steps forward do we want to look from the end of
+		# _opacity_base_list_fully_opaque_quantity?
+		+ _opacity_list_look_ahead_opaque
+		# How many etra steps forwards AFTER base opaque range + opaque look ahead should we
+		# consider for mid-opacity?
+		+ _opacity_list_look_ahead_transparent
+		)
+	
+	# We find out how many labels to affect, and take some steps back from where the user would
+	# start adding transparency (user's relative top of the list)
+	var _func_scope_opacity_range_amt = (
+		# Default is amt of labels originally contained (equal to range of stuff cursor UX selection
+		# range has); Alternative is a custom range specified by coder (this hasn't been tested yet)
+		_opacity_base_list_fully_opaque_quantity
+		# How many extra steps behind do we want to look from 1st label?
+		+ _opacity_list_look_behind_opaque
+		# How many extra steps forward do we want to look from the end of
+		# _opacity_base_list_fully_opaque_quantity?
+		+ _opacity_list_look_ahead_opaque
+		)
+	
+	# Preparation for if _should_mask_list_for_infinite_wrapping_effect is true. See use below.
+	var _disposable_opacity_information_current : Array[float]
+	var _disposable_opacity_information_desired : Array[float]
+	_disposable_opacity_information_current.resize(_VBoxContainer.get_child_count(false))
+	_disposable_opacity_information_desired.resize(_VBoxContainer.get_child_count(false))
+	var _disposable_setter_var : float
+	
+	# Setup info used as a reference point for masking to know what to do.
 	for n in _VBoxContainer.get_child_count(false):
-		_VBoxContainer.get_child(n)._set_desired_opacity(000.0)
+		
+		# Copies list content to be read later; It's easier to read a copy than to move null around.
+		_disposable_opacity_information_current[n] = _VBoxContainer.get_child(n).current_opacity
+		_disposable_opacity_information_desired[n] = _VBoxContainer.get_child(n).desired_opacity
 		pass
 	
-	# Next, do a pass for mid-opacity stuff (range adjusted to be around cursor pos)...
-	for n in _func_scope_transparency_range_amt:
-		(_VBoxContainer.get_child(
-				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-				+ _current_cursor_pos # Starts counting from zero because arrays <3
-				+ n # Iteration over the size of our list; _label_quantity
+	if _flag_developer_printing:
+		print(_current_cursor_pos)
+		print(_disposable_opacity_information_current)
+		
+		printerr("Setting desired to invisible on all labels.")
+		pass
+	
+	# This needs to happen after getting a deep copy of every label's opacity info
+	for n in _VBoxContainer.get_child_count(false):
+		_VBoxContainer.get_child(n).desired_opacity = (000.0/255.0)
+		pass
+	
+	# If we're moving normally (not wrapping/going OOB)...
+	if !_should_mask_list_for_infinite_wrapping_effect:
+		if _flag_developer_printing:
+			print("Moving normally!")
+			pass
+		
+		# Pass 1: Transparency; Set affected range relative to where cursor is.
+		for n in _func_scope_transparency_range_amt:
+			( # Set desired_opacity to labels' mid_opacity values
+				_VBoxContainer.get_child(
+					# Range adjustments
+					(_before_copies_amt * _label_quantity)
+					- _opacity_list_look_behind_transparent
+					- _opacity_list_look_behind_opaque
+					# Stuff that's relative to cursor position/iteration of range
+					+ _current_cursor_pos
+					+ n
+					)
+					).desired_opacity = (
+						_VBoxContainer.get_child(
+						# Range adjustments
+						(_before_copies_amt * _label_quantity)
+						- _opacity_list_look_behind_transparent
+						- _opacity_list_look_behind_opaque
+						# Stuff that's relative to cursor position/iteration of range
+						+ _current_cursor_pos
+						+ n
+						)
+						).mid_opacity
+			
+			# Don't set current_opacity here; It'll ruin label easing animation.
+			pass
+		
+		# Pass 2: Opacity; Set affected range relative to where cursor is.
+		for n in _func_scope_opacity_range_amt:
+			# Set desired_opacity to full opacity
+			_VBoxContainer.get_child(
+				# Range adjustments
+				(_before_copies_amt * _label_quantity)
 				- _opacity_list_look_behind_opaque
-				- _opacity_list_look_behind_transparent # this shifts effected range backwards
-			).desired_opacity
-		) = _VBoxContainer.get_child( # I need to reference info in the label.
-				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-				+ _current_cursor_pos # Starts counting from zero because arrays <3
-				+ n # Iteration over the size of our list; _label_quantity
-				- _opacity_list_look_behind_opaque # this shifts effected range backwards
-				- _opacity_list_look_behind_transparent # this shifts effected range backwards
-			).mid_opacity
-	
-	# Finally, set full opacity stuff (range adjusted to be around cursor pos)...
-	for n in _func_scope_opacity_range_amt:
-		(_VBoxContainer.get_child(
-					(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-					+ _current_cursor_pos # Starts counting from zero because arrays <3
-					+ n # Iteration over the size of our list; _label_quantity
-					- _opacity_list_look_behind_opaque # this shifts effected range backwards
-				).desired_opacity
-			) = (255.0/255.0)
-	
-	
-	
-	
-	
-	
-	# If we should snap list contents' opacity due to OOB handling, also set current_opacity...
-	if _should_snap_list_for_infinite_wrapping_effect:
-		# Start by politely asking all labels to turn invisible...
-		for n in _VBoxContainer.get_child_count(false):
-			_VBoxContainer.get_child(n)._set_current_opacity(000.0)
+				# Stuff that's relative to cursor position/iteration of range
+				+ _current_cursor_pos
+				+ n
+				).desired_opacity = (255.0/255.0)
+			pass
+		
+		# Don't set current_opacity here; It'll ruin label easing animation.
 		pass
+	
+	
+	
+	# Next is handling setting opacity to sibling label's values.
+	
+	# If we're wrapping (going OOB) and want to handle the smoke/mirrors effect...
+	elif _should_mask_list_for_infinite_wrapping_effect:
+		if _flag_developer_printing:
+			print("Attempting wrapping effect!")
+			pass
 		
-		# Note: This is the earliest point in code execution that we lose any control;
-		# Instead of adapting to whatever opacity labels in this list were (and choosing
-		# between 'risking a null reference error' / 'ignoring first/last literal item and
-		# leaving an opening that a programmer could be confused by (preferable option)'
+		##Note (Check this if you're getting animation bugs after customizing top variables):
+		#   I'd rather over-explain than not say enough.
+		#
+		#       - In case you need to know...
+		#   _label_quantity is what the original size of the array is, and will be set to the same
+		# integer quantity you're seeing in-editor to make this script more robust by preventing
+		# having to adjust manually every time something minor changes. Used as a basic building
+		# block for everything else in here.
+		#
+		#       - In this function's context...
+		#   You'll need extra slots at the top/bottom that are as big as the list contents that the
+		# user can navigate (so whatever integer _label_quantity is, since that's what the UX func,
+		# _process_move_cursor_by(), uses to figure out where to end of the list is like this:
+		# "_current_cursor_pos = _label_quantity-1". Following my explaining, us wanting the range 
+		# _current_cursor_pos results in "_label_quantity-1+1").
+		#
+		#   There's no check for this; You should expect these extra labels to stay invisible at
+		# all times to avoid visual animation bugs by keeping track of everything during
+		# customization. (labels' opacity easing funcs are effectively an animation curve without
+		# a graph to represent it)
+		#
+		#   The reason I'm doing this is because we'll be making an effective range in this func
+		# that'll be the same size as whatever our normal ranges are (so whatever math we used to
+		# set transparency will be what we use to set everything here, using something unique to
+		# this function). If the selector-style range moving forwards or backwards by 
+		# _label_quantity goes outside of what's literally not there due to lack of generation, then
+		# we'll reference <null> and fall outside of intended behaviour.
+		# I'm gonna take a wild guess and assume neither of us want that.
+		#
+		#   Also, the previous paragraph is outdated because I worked out a much more elegant
+		# solution.
+		#
+		#   So.
+		#
+		#   I'll probably either improve design or leave notes *eventually*, but for now my
+		# suggested handling is non-destructive, so good enough at this prototyping phase safe for
+		# a design document or something.
 		
-		# What does that mean here? Well, I want something relatively -- I'm not gonna try to 
-		# explain animation, I don't have the language for it yet. BASICALLY this script assumes at
-		# this point that we're either done with or close enough to being done with easing that it's
-		# not gonna matter if we just set everything to mid_opacity or 'full opacity' since any 
-		# 'stuttering' in how smooth lerping would be at 60fps should be negligeable due to it not
-		# being noticeable enough to warrant finer precision (even though I totally could do that!).
-		
-		if (_move_direction == -1):
-			# We just assume script animation lerping is done because I said so I guess.
-			# I REALLY want to try something else that'll let animation be more robust, though.
+		# If we moved upwards OOB, mask visuals like we're at the bottom of list
+		if _move_direction == -1:
 			
-			# YIKES this doesn't look good at slower speeds, I'm adding a challenger's note
-			# to come back and deal with this properly, but I'm trying to wrap this up first.
+			# Resetting all label's desired opacity to 0 has been handled in this function prior.
 			
-			# Seriously hurts quality of visuals, since the entire point of this style is to allow
-			# for a floatier and more fluid animation style, AND be robust enough to work fine with
-			# slower lerps, which makes this a critical point of failure.
-			
-			# I'm really not happy with this, I WILL come back and change how this works on polish.
-			
-			#print("MOVE TO BOTTEM!!!!!")
-			
-			for n in _func_scope_transparency_range_amt:
-				# Set current_opacity (mid_opacity)
-				_VBoxContainer.get_child(
-					(_before_copies_amt * _label_quantity)
-					+ _label_quantity - 1
-					- _opacity_list_look_behind_opaque
-					- _opacity_list_look_behind_transparent
-				).current_opacity = _VBoxContainer.get_child( # Difference maker
-					(_before_copies_amt * _label_quantity)
-					+ _label_quantity - 1
-					- _opacity_list_look_behind_opaque
-					- _opacity_list_look_behind_transparent
-				).mid_opacity
+			# Check to make sure we can actually use label info (check for any null reference)
+			if !is_instance_valid(
+				# Remember, child selection counting in GDS starts at int 0, while this math is @ 1.
+				_VBoxContainer.get_child( # Starts counting from 0. Select area = runtime labels-1
+					(_before_copies_amt * _label_quantity) # Starts at 1 - Stops at usr cursor start
+					+ (_label_quantity - 1) # Stops at the end of where user's cursor can go.
+					+ _opacity_base_list_fully_opaque_quantity # Base extra space needed for opaque
+					+ _opacity_list_look_ahead_opaque # Extra space needed for MORE opaque
+					+ _opacity_list_look_ahead_transparent # Extra space needed for transparent
+					)
+				):
+				printerr("control-list-selection.gd:
+				_process_pulse_update_visuals_labels_opacity():
+				_should_mask_list_for_infinite_wrapping_effect:
+				_move_direction == -1:
+				!is_instance_valid:
+					I was GOING to add a detailed 'heres how to fix this error' message,
+					but I'm still making the prototype for this script!
+					
+					Basically, script is trying to set opacity information for labels in a range
+					outside of the slots available to variable _after_copies_amt (you're trying to
+					use labels that don't exist).
+					
+					Give this variable a bigger numebr or take the time to study how your starting
+					variables affect script behaviour. Nothing should be bigger than 20 in a list
+					with a handful of items."
+					)
+				get_tree().quit(1)
 				
-				# Set desired_opacity (mid_opacity)
-				_VBoxContainer.get_child(
-					(_before_copies_amt * _label_quantity)
-					+ _label_quantity - 1
-					- _opacity_list_look_behind_opaque
-					- _opacity_list_look_behind_transparent
-				).desired_opacity = _VBoxContainer.get_child( # Difference maker
-					(_before_copies_amt * _label_quantity)
-					+ _label_quantity - 1
-					- _opacity_list_look_behind_opaque
-					- _opacity_list_look_behind_transparent
-				).mid_opacity
 				pass
 			
-			for n in _func_scope_opacity_range_amt:
-				# Set current opacity (opaque)
-				_VBoxContainer.get_child(
-					(_before_copies_amt * _label_quantity)
+			# Delete these comments on commit.
+			
+			# Makes sure there's no leftover labels when setting current_opacity. Bad idea?
+#			for o in _VBoxContainer.get_child_count(false):
+#				_VBoxContainer.get_child(o).current_opacity = (000.0/255.0)
+#				pass
+			
+			# I was wrong about selection method, I need to get the entire list adjusted for this.
+			
+			# I'm not focused enough right now to add checks, MAKE SURE you have enough space here.
+#			for n in (
+#				_VBoxContainer.get_child_count(false)
+#				):
+#				pass
+			
+			# Steal desired and current opacity on everything in range.
+			for n in _VBoxContainer.get_child_count(false) - _label_quantity:
+				
+				# Setting desired opacity has intended behaviour.
+				_VBoxContainer.get_child( # Honestly, I should've seen this solution by now.
+					n
 					+ _label_quantity - 1
-					- _opacity_list_look_behind_opaque
-				).current_opacity = (255.0/255.0)
+					).desired_opacity = (
+						_disposable_opacity_information_desired[
+						n
+						]
+					)
 				
-				
-				
-				# Set desired opacity (opaque)
+				# Setting current opacity is mostly working as intended.
 				_VBoxContainer.get_child(
-					(_before_copies_amt * _label_quantity)
-					+ _label_quantity - 1
-					- _opacity_list_look_behind_opaque
-				).desired_opacity = (255.0/255.0)
-				
-				(_VBoxContainer.get_child(
-						(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-						+ _current_cursor_pos # Starts counting from zero because arrays <3
-						+ n # Iteration over the size of our list; _label_quantity
-						- _opacity_list_look_behind_opaque # this shifts effected range backwards
-					).desired_opacity
-				) = (255.0/255.0)
-				pass
-		
-		elif (_move_direction == +1):
-			
-			#print("MOVE TO TOP!!!!!")
-			
-			for n in _func_scope_transparency_range_amt:
-				# Set current_opacity (mid_opacity)
-				_VBoxContainer.get_child(
-					(_before_copies_amt * _label_quantity)
-					+ n
-					- _opacity_list_look_behind_opaque
-					- _opacity_list_look_behind_transparent
-				).current_opacity = _VBoxContainer.get_child( # Difference maker
-					(_before_copies_amt * _label_quantity)
-					+ n
-					- _opacity_list_look_behind_opaque
-					- _opacity_list_look_behind_transparent
-				).mid_opacity
-				
-				# Set desired_opacity (mid_opacity)
-				_VBoxContainer.get_child(
-					(_before_copies_amt * _label_quantity)
-					+ n
-					- _opacity_list_look_behind_opaque
-					- _opacity_list_look_behind_transparent
-				).desired_opacity = _VBoxContainer.get_child( # Difference maker
-					(_before_copies_amt * _label_quantity)
-					+ n
-					- _opacity_list_look_behind_opaque
-					- _opacity_list_look_behind_transparent
-				).mid_opacity
-				pass
-			
-			for n in _func_scope_opacity_range_amt:
-				# Set current opacity (opaque)
-				_VBoxContainer.get_child(
-					(_before_copies_amt * _label_quantity)
-					+ n
-					- _opacity_list_look_behind_opaque
-				).current_opacity = (255.0/255.0)
-				
-				# Set desired opacity (opaque)
-				_VBoxContainer.get_child(
-					(_before_copies_amt * _label_quantity)
-					+ n
-					- _opacity_list_look_behind_opaque
-				).desired_opacity = (255.0/255.0)
+					n
+					+ _label_quantity
+					).current_opacity = (
+						_disposable_opacity_information_current[
+						n
+						]
+					)
 				pass
 			pass
 		
+		# If we moved downwards OOB, mask visuals like we're at the top of list
+		elif _move_direction == +1:
+			# Steal desired and current opacity on everything in range.
+			for n in _VBoxContainer.get_child_count(false) - _label_quantity - 1:
+				
+				# This code feels slightly less cleanly-applied in practice, but I can't even read
+				# the old code I did for moving up and OOB. I should seriously stop working so
+				# late into the night, above code just looks insane in comparison.
+				
+				# Nevermind, I made a couple light touches to this new idea.
+				
+				# This new code is... very obvious, and very accurate. Perfectly accurate. 
+				# Seriously, what the hell was I doing last session? How did this require three
+				# tries to get right, was I that tired? This should've been incredibly easy...
+				
+				# Anyways, you don't get to inspect the insane garbage that was in here a sec ago
+				# due to me being too busy and forgetting to commit my mistakes to git for the last
+				# few days. If you read **THIS** code, you should know exactly how it works.
+				
+				# Setting desired opacity works as intended.
+				_VBoxContainer.get_child(
+					n
+					).desired_opacity = (
+					_disposable_opacity_information_desired[
+						+ n
+						+ _label_quantity - 1
+						]
+					)
+				
+				# Setting current opacity works as intended. I think.
+				_VBoxContainer.get_child(
+					n
+					).current_opacity = (
+					_disposable_opacity_information_current[
+						+ n
+						+ _label_quantity
+						]
+					)
+				pass
+			pass
 		
 		else:
-			if _flag_developer_printing:
-				printerr("You need a -1 or +1 passed for _move_direction, or else the wrap effect
-					you should see when going OOB won't work properly!")
-			if _flag_developer_printing:
-				printerr("Anyways, I don't feel like having this be a potential blindspot,
-					so we exit.")
-			get_tree().quit(1)
-			pass
+			print()
+			print()
+			printerr("Catch case:")
+			print()
+			printerr("				_process_pulse_update_visuals_labels_opacity()
+				_should_mask_list_for_infinite_wrapping_effect == true:
+				!(_move_direction == -1) && !(_move_direction == +1):
+					With the way this script is designed, you should either be moving up one
+					or down one exclusively. You just tried to move more than that while going 
+					out-of-bounds, which is currently meant to handle the visual wrapping effect
+					that makes this list look like it loops infinitely by having funcs set UX and
+					visuals at the very top/bottem while making it look like we came from 
+					out-of-bounds (which for the user should look like it's an extension of the same
+					list - infinitely). Anyways, go fix that before continuing. lol")
+			print()
+			printerr()
 		
-#		# Next, do a pass for mid-opacity stuff (range adjusted to be around cursor pos)...
-#		for n in _func_scope_transparency_range_amt:
-#			(_VBoxContainer.get_child(
-#					(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-#					+ _current_cursor_pos # Starts counting from zero because arrays <3
-#					+ n # Iteration over the size of our list; _label_quantity
-#					- _opacity_list_look_behind_opaque
-#					- _opacity_list_look_behind_transparent # this shifts effected range backwards
-#				).current_opacity
-#			) = _VBoxContainer.get_child( # I need to reference info in the label.
-#					(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-#					+ _current_cursor_pos # Starts counting from zero because arrays <3
-#					+ n # Iteration over the size of our list; _label_quantity
-#					- _opacity_list_look_behind_opaque # this shifts effected range backwards
-#					- _opacity_list_look_behind_transparent # this shifts effected range backwards
-#				).mid_opacity
-#		
-#		# Finally, set full opacity stuff (range adjusted to be around cursor pos)...
-#		
-#		
-#		
-#		
-#		
-#		# This is all bad code. I need a more sound way of thinking about how I'm gonna tell labels
-		# what other label to steal opacity info from in order to wrap up the logic behind keeping 
-		# this visually clean.
-		
-		# I'm VERY CONFIDENT I can do something like "iterate over the list with new shifted select
-		# range, and use 'the difference between cursorpos 0 and label_quantity - 1', as a copy
-		# reference within what we were already using before updating with that info", which
-		# would then probably justify using AN ENTIRE EXTRA DEEP COPY ARRAY in this function just 
-		# for that. I'm out of time to think this through, so I'm stopping this session at this
-		# note instead of blueprinting due to mental fatigue (I can't tell if this is a good idea
-		# because I'm out of 'think of alternative ideas' energy).
-		
-	#	for n in _func_scope_opacity_range_amt:
-	#		# Potential problem: If we NEED to update final item on list, we lose that control here.
-	#		# I'll have to leave a dev note telling you to add a bit of extra padding for that.
-	#		if (n+1 != null):
-	#			(_VBoxContainer.get_child(
-	#						(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-	#						+ _current_cursor_pos # Starts counting from zero because arrays <3
-	#						+ n # Iteration over the size of our list; _label_quantity
-	#						- _opacity_list_look_behind_opaque # this shifts effected range backwards
-	#					).current_opacity
-	#				) = _VBoxContainer.get_child(
-	#					
-	#				)
-	#		else: # The bit we lost refined control over.
-	#			# (Edge case) Stops working if last label was gonna cause a null reference error.
-	#			
-	#			_VBoxContainer.get_child(n).current_opacity = (000.0)
-	#			
-	#			# If this is a problem for label transparency updates, you're basically RIGHT at the
-	#			# limit of the list; either subtract 1 to _opacity_list_look_ahead_transparent, or
-	#			# _opacity_list_look_ahead_opaque, or _opacity_base_list_fully_opaque_quantity so
-	#			# that you take up less space selecting (which is the 'see this range and move back'
-	#			# mentality behind this code to keep sightreading and mental visualization easier) -
-	#			# OR add 1 to _after_copies_amt so that you have more space to work with so that the
-	#			# selection stuff stops being an edge case.
-		pass
-	pass
-
-# FAILURE - Don't forget to place this somewhere affected post-cursor movement.
-# Wow, there seems to be a blindspot from my POV, this just doesn't work when I'm calling
-# _process_pulse_update_visuals_labels_opacity(_process_move_cursor_by(-1)) even though encapsulated
-# function returns true accurately; It has modified behaviour for some reason, so I can't set 
-# opacity in here. I'm gonna instead go for calling this inside of
-# _process_move_cursor_by(), annoyingly enough, which makes this script a little less sightreadable.
-#
-# Nope, it's not encapsulation, this func's behaviour is in a blindspot for me.
-# Despite executing print and getting variables, I can't set them with my usual.
-#
-# ...AND I can call functions in the labels that I can't set in. Eureka moment?
-#
-# Apparently the 'fail to set opacity' cases I said here are referencing "<null>".
-#
-# Nope seems to reference '<null>' either way. Alright, I can't quite identify *WHAT* is happening,
-# but using function calls seem to be an adequate way to handle this.
-#
-# Guess we're getting tunnel vision.
-#
-# Wait, no. Something's wrong.
-#
-# ohhhhhhhhhhhhhh that was so stupid. There was later code in here that overwrote my progress, and
-# it was a copy/paste from my initial setup func.
-#
-# Trying original attempt now.
-#
-# Okay, turns out the critical bug is desired_opacity not interfacing with the labels' easing 
-# functions because those funcs are not handling any of this right. Yaaaaay...
-func _old_process_pulse_update_visuals_labels_opacity(
-	_should_force_update_opacity_stuff_for_smoke_and_mirrors : bool
-	) -> void:
-	var _func_scope_transparency_range_amt = ( # We find out how many labels to affect, and take some steps back from where the user would start (user's relative top of the list)
-		_opacity_base_list_fully_opaque_quantity # Default is amt of labels originally contained (equal to range of stuff cursor UX selection range has); Alternative is a custom range specified by coder (this hasn't been tested yet)
-		+ _opacity_list_look_behind_opaque # How many extra steps behind do we want to look from 1st label?
-		+ _opacity_list_look_behind_transparent # How many extra steps back should we consider for mid-opacity?
-		+ _opacity_list_look_ahead_opaque # How many extra steps forward do we want to look from the end of _opacity_base_list_fully_opaque_quantity?
-		+ _opacity_list_look_ahead_transparent # How many etra steps forwards AFTER base opaque range + opaque look ahead should we consider for mid-opacity?
-	)
-	
-	var _func_scope_opacity_range_amt = ( # We find out how many labels to affect, and take some steps back from where the user would start (user's relative top of the list)
-		_opacity_base_list_fully_opaque_quantity # Default is amt of labels originally contained (equal to range of stuff cursor UX selection range has); Alternative is a custom range specified by coder (this hasn't been tested yet)
-		+ _opacity_list_look_behind_opaque # How many extra steps behind do we want to look from 1st label?
-		+ _opacity_list_look_ahead_opaque # How many extra steps forward do we want to look from the end of _opacity_base_list_fully_opaque_quantity?
-	)
-	
-	# Here comes some textual vomit.
-	
-	# If we want smooth, normal updating
-	if !_should_force_update_opacity_stuff_for_smoke_and_mirrors:
-		#_flag_wants_to_snap_labels_opacity = false # This is also now redundant.
-		
-		# Gently tells all labels that they want to turn invisible.
-		for n in _VBoxContainer.get_child_count(false):
-			#print("omigah", n)
-			#print("Can you 'get'? ", _VBoxContainer.get_child(n).can_i_read_this_variable," ",n)
-			#print("Testing calls", _VBoxContainer.get_child(n)._call_func_test()," ",n)
-			# Okay, apparently labels aren't regulating current_opacity yet. Hang on.
-			#_VBoxContainer.get_child(n).current_opacity = (000.0/225.0)
-			_VBoxContainer.get_child(n).desired_opacity = (000.0/225.0)
-#			_VBoxContainer.get_child(n)._set_desired_opacity(000.0)
-#			_VBoxContainer.get_child(n).set("theme_override_colors/default_color",
-#				Color(
-#					_VBoxContainer.get_child(n).current_color.r,
-#					_VBoxContainer.get_child(n).current_color.g,
-#					_VBoxContainer.get_child(n).current_color.b,
-#					0.0)
-#				)
-			pass
-		
-		# Updates desired opacity on relevant labels -- This section handles mid-opacity.
-		for n in _func_scope_transparency_range_amt:
-			(_VBoxContainer.get_child(
-					(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-					+ _current_cursor_pos # Starts counting from zero because arrays <3
-					+ n # Iteration over the size of our list; _label_quantity
-					- _opacity_list_look_behind_opaque
-					- _opacity_list_look_behind_transparent # this shifts effected range backwards
-				).desired_opacity
-			) = _VBoxContainer.get_child( # I need to reference a var in the label.
-					(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-					+ _current_cursor_pos # Starts counting from zero because arrays <3
-					+ n # Iteration over the size of our list; _label_quantity
-					- _opacity_list_look_behind_opaque # this shifts effected range backwards
-					- _opacity_list_look_behind_transparent # this shifts effected range backwards
-				).mid_opacity
-		
-		# Updates desired opacity on relevant labels -- This section handles full opacity.
-		for n in _func_scope_opacity_range_amt:
-			(_VBoxContainer.get_child(
-						(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-						+ _current_cursor_pos # Starts counting from zero because arrays <3
-						+ n # Iteration over the size of our list; _label_quantity
-						- _opacity_list_look_behind_opaque # this shifts effected range backwards
-					).desired_opacity
-				) = (255.0/255.0)
-		pass
-	elif _should_force_update_opacity_stuff_for_smoke_and_mirrors:
-		printerr("nope!")
 		pass
 	
-	
-	
-	
-	
-	
-	# OLD CODE BELOW
-	
-	
-	
-	
-	# Half-opacity section - you should do this first in current design.
-#	for n in _func_scope_transparency_range_amt:
-#		# Set every (revelant) label's current opacity
-#		(_VBoxContainer.get_child(
-#				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-#				+ n # Iteration over the size of our list; _label_quantity
-#				- _opacity_list_look_behind_opaque
-#				- _opacity_list_look_behind_transparent # this shifts effected range backwards
-#			).current_opacity
-#		) = _VBoxContainer.get_child(
-#				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-#				+ n # Iteration over the size of our list; _label_quantity
-#				- _opacity_list_look_behind_opaque # this shifts effected range backwards
-#				- _opacity_list_look_behind_transparent # this shifts effected range backwards
-#			).mid_opacity
-#		# Set every (revelant) label's desired opacity
-#		(_VBoxContainer.get_child(
-#				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-#				+ n # Iteration over the size of our list; _label_quantity
-#				- _opacity_list_look_behind_opaque # this shifts effected range backwards
-#				- _opacity_list_look_behind_transparent # this shifts effected range backwards
-#			).desired_opacity
-#		) = _VBoxContainer.get_child(
-#				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-#				+ n # Iteration over the size of our list; _label_quantity
-#				- _opacity_list_look_behind_opaque # this shifts effected range backwards
-#				- _opacity_list_look_behind_transparent # this shifts effected range backwards
-#			).mid_opacity
-#	
-#	
-#	# Full-opacity section - you should do this after in current design.
-#	for n in _func_scope_opacity_range_amt:
-#		# Set every (relevant) label's current opacity
-#		(_VBoxContainer.get_child(
-#				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-#				+ n # Iteration over the size of our list; _label_quantity
-#				- _opacity_list_look_behind_opaque # this shifts effected range backwards
-#			).current_opacity
-#		) = (255.0/255.0)
-#		# Set every (revelant) label's desired opacity
-#		(_VBoxContainer.get_child(
-#				(_before_copies_amt * _label_quantity) # Where script thinks user's start of list is
-#				+ n # Iteration over the size of our list; _label_quantity
-#				- _opacity_list_look_behind_opaque # this shifts effected range backwards
-#			).desired_opacity
-#		) = (255.0/255.0)
 	pass
